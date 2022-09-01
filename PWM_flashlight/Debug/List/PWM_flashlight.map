@@ -16,11 +16,11 @@ control_buttons_update                                                          
 FLASH Allocation [words]
 Function                                                                          Address   Size
 ------------------------------------------------------------------------------------------------
-initializationDefolt                                                              0x00043     38
-main                                                                              0x00069      7
-EEPROM_write                                                                      0x00070     13
-EEPROM_read                                                                       0x0007D     11
-Brightnes_Poll                                                                    0x00088     40
-PWM                                                                               0x000B0      5
-Check_Button                                                                      0x000B5     21
-exterInt0                                                                         0x000CA     30
+initializationDefolt                                                              0x00048     38
+main                                                                              0x0006E      7
+EEPROM_write                                                                      0x00075     13
+EEPROM_read                                                                       0x00082     11
+Brightnes_Poll                                                                    0x0008D     40
+PWM                                                                               0x000B5      5
+Check_Button                                                                      0x000BA     21
+exterInt0                                                                         0x000CF     30

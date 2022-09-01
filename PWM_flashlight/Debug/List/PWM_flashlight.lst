@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.1.30  F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm Thu Sep 01 21:29:42 2022
+AVRASM ver. 2.1.30  F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm Fri Sep 02 00:34:02 2022
 
 F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1018): warning: Register r4 already defined by the .DEF directive
 F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1019): warning: Register r5 already defined by the .DEF directive
@@ -13,14 +13,14 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1020): war
                  ;Build configuration    : Debug
                  ;Chip type              : ATtiny13
                  ;Program type           : Application
-                 ;Clock frequency        : 0,064000 MHz
+                 ;Clock frequency        : 0,128000 MHz
                  ;Memory model           : Tiny
                  ;Optimize for           : Size
                  ;(s)printf features     : int, width
                  ;(s)scanf features      : int, width
                  ;External RAM size      : 0
-                 ;Data Stack size        : 16 byte(s)
-                 ;Heap size              : 0 byte(s)
+                 ;Data Stack size        : 32 byte(s)
+                 ;Heap size              : 8 byte(s)
                  ;Promote 'char' to 'int': Yes
                  ;'char' is unsigned     : Yes
                  ;8 bit enums            : Yes
@@ -86,8 +86,8 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1020): war
                  
                  	.EQU __SRAM_START=0x0060
                  	.EQU __SRAM_END=0x009F
-                 	.EQU __DSTACK_SIZE=0x0010
-                 	.EQU __HEAP_SIZE=0x0000
+                 	.EQU __DSTACK_SIZE=0x0020
+                 	.EQU __HEAP_SIZE=0x0008
                  	.EQU __CLEAR_SRAM_SIZE=__SRAM_END-__SRAM_START+1
                  
                  	.MACRO __CPD1N
@@ -1033,8 +1033,8 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1020): war
                  __START_OF_CODE:
                  
                  ;INTERRUPT VECTORS
-000000 c00f      	RJMP __RESET
-000001 c0c8      	RJMP _exterInt0
+000000 c014      	RJMP __RESET
+000001 c0cd      	RJMP _exterInt0
 000002 cffd      	RJMP 0x00
 000003 cffc      	RJMP 0x00
 000004 cffb      	RJMP 0x00
@@ -1050,94 +1050,103 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1020): war
 F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): warning: .cseg .db misalignment - padding zero byte
 00000b 0000      	.DB  0x0,0x0,0x0
                  
+                 ;HEAP START MARKER INITIALIZATION
+                 __HEAP_START_MARKER:
+00000c 0000
+00000d 0000      	.DW  0,0
+                 
                  
                  __GLOBAL_INI_TBL:
-00000c 0003      	.DW  0x03
-00000d 0004      	.DW  0x04
-00000e 0014      	.DW  __REG_VARS*2
+00000e 0003      	.DW  0x03
+00000f 0004      	.DW  0x04
+000010 0014      	.DW  __REG_VARS*2
+                 
+000011 0004      	.DW  0x04
+000012 0098      	.DW  0x98
+000013 0018      	.DW  __HEAP_START_MARKER*2
                  
                  _0xFFFFFFFF:
-00000f 0000      	.DW  0
+000014 0000      	.DW  0
                  
                  #define __GLOBAL_INI_TBL_PRESENT 1
                  
                  __RESET:
-000010 94f8      	CLI
-000011 27ee      	CLR  R30
-000012 bbec      	OUT  EECR,R30
-000013 bfe5      	OUT  MCUCR,R30
+000015 94f8      	CLI
+000016 27ee      	CLR  R30
+000017 bbec      	OUT  EECR,R30
+000018 bfe5      	OUT  MCUCR,R30
                  
                  ;CLEAR R2-R14
-000014 e08d      	LDI  R24,(14-2)+1
-000015 e0a2      	LDI  R26,2
+000019 e08d      	LDI  R24,(14-2)+1
+00001a e0a2      	LDI  R26,2
                  __CLEAR_REG:
-000016 93ed      	ST   X+,R30
-000017 958a      	DEC  R24
-000018 f7e9      	BRNE __CLEAR_REG
-                 
-                 ;CLEAR SRAM
-000019 e480      	LDI  R24,__CLEAR_SRAM_SIZE
-00001a e6a0      	LDI  R26,__SRAM_START
-                 __CLEAR_SRAM:
 00001b 93ed      	ST   X+,R30
 00001c 958a      	DEC  R24
-00001d f7e9      	BRNE __CLEAR_SRAM
+00001d f7e9      	BRNE __CLEAR_REG
+                 
+                 ;CLEAR SRAM
+00001e e480      	LDI  R24,__CLEAR_SRAM_SIZE
+00001f e6a0      	LDI  R26,__SRAM_START
+                 __CLEAR_SRAM:
+000020 93ed      	ST   X+,R30
+000021 958a      	DEC  R24
+000022 f7e9      	BRNE __CLEAR_SRAM
                  
                  ;GLOBAL VARIABLES INITIALIZATION
-00001e e1e8      	LDI  R30,LOW(__GLOBAL_INI_TBL*2)
-00001f e0f0      	LDI  R31,HIGH(__GLOBAL_INI_TBL*2)
+000023 e1ec      	LDI  R30,LOW(__GLOBAL_INI_TBL*2)
+000024 e0f0      	LDI  R31,HIGH(__GLOBAL_INI_TBL*2)
                  __GLOBAL_INI_NEXT:
-000020 95c8      	LPM
-000021 9631      	ADIW R30,1
-000022 2d80      	MOV  R24,R0
-000023 95c8      	LPM
-000024 9631      	ADIW R30,1
-000025 2d90      	MOV  R25,R0
-000026 9700      	SBIW R24,0
-000027 f0b9      	BREQ __GLOBAL_INI_END
+000025 95c8      	LPM
+000026 9631      	ADIW R30,1
+000027 2d80      	MOV  R24,R0
 000028 95c8      	LPM
 000029 9631      	ADIW R30,1
-00002a 2da0      	MOV  R26,R0
-00002b 95c8      	LPM
-00002c 9631      	ADIW R30,1
-00002d 2db0      	MOV  R27,R0
-00002e 95c8      	LPM
-00002f 9631      	ADIW R30,1
-000030 2c10      	MOV  R1,R0
-000031 95c8      	LPM
-000032 9631      	ADIW R30,1
-000033 2f6e      	MOV  R22,R30
-000034 2f7f      	MOV  R23,R31
-000035 2df0      	MOV  R31,R0
-000036 2de1      	MOV  R30,R1
+00002a 2d90      	MOV  R25,R0
+00002b 9700      	SBIW R24,0
+00002c f0b9      	BREQ __GLOBAL_INI_END
+00002d 95c8      	LPM
+00002e 9631      	ADIW R30,1
+00002f 2da0      	MOV  R26,R0
+000030 95c8      	LPM
+000031 9631      	ADIW R30,1
+000032 2db0      	MOV  R27,R0
+000033 95c8      	LPM
+000034 9631      	ADIW R30,1
+000035 2c10      	MOV  R1,R0
+000036 95c8      	LPM
+000037 9631      	ADIW R30,1
+000038 2f6e      	MOV  R22,R30
+000039 2f7f      	MOV  R23,R31
+00003a 2df0      	MOV  R31,R0
+00003b 2de1      	MOV  R30,R1
                  __GLOBAL_INI_LOOP:
-000037 95c8      	LPM
-000038 9631      	ADIW R30,1
-000039 920d      	ST   X+,R0
-00003a 9701      	SBIW R24,1
-00003b f7d9      	BRNE __GLOBAL_INI_LOOP
-00003c 2fe6      	MOV  R30,R22
-00003d 2ff7      	MOV  R31,R23
-00003e cfe1      	RJMP __GLOBAL_INI_NEXT
+00003c 95c8      	LPM
+00003d 9631      	ADIW R30,1
+00003e 920d      	ST   X+,R0
+00003f 9701      	SBIW R24,1
+000040 f7d9      	BRNE __GLOBAL_INI_LOOP
+000041 2fe6      	MOV  R30,R22
+000042 2ff7      	MOV  R31,R23
+000043 cfe1      	RJMP __GLOBAL_INI_NEXT
                  __GLOBAL_INI_END:
                  
                  ;HARDWARE STACK POINTER INITIALIZATION
-00003f e9ef      	LDI  R30,LOW(__SRAM_END-__HEAP_SIZE)
-000040 bfed      	OUT  SPL,R30
+000044 e9e7      	LDI  R30,LOW(__SRAM_END-__HEAP_SIZE)
+000045 bfed      	OUT  SPL,R30
                  
                  ;DATA STACK POINTER INITIALIZATION
-000041 e7c0      	LDI  R28,LOW(__SRAM_START+__DSTACK_SIZE)
+000046 e8c0      	LDI  R28,LOW(__SRAM_START+__DSTACK_SIZE)
                  
-000042 c026      	RJMP _main
+000047 c026      	RJMP _main
                  
                  	.ESEG
                  	.ORG 0x00
                  
                  	.DSEG
-                 	.ORG 0x70
+                 	.ORG 0x80
                  
                  	.CSEG
-                 ;#define F_CPU 4800000UL
+                 ;#define F_CPU 128000UL
                  ;#include <tiny13.h>
                  	#ifndef __SLEEP_DEFINED__
                  	#define __SLEEP_DEFINED__
@@ -1188,20 +1197,20 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  _initializationDefolt:
                  ; .FSTART _initializationDefolt
                  ; 0000 0027 	brightness_level_percent = EEPROM_read(0x00);
-000043 e0a0      	LDI  R26,LOW(0)
-000044 e0b0      	LDI  R27,0
-000045 d037      	RCALL _EEPROM_read
-000046 2e4e      	MOV  R4,R30
+000048 e0a0      	LDI  R26,LOW(0)
+000049 e0b0      	LDI  R27,0
+00004a d037      	RCALL _EEPROM_read
+00004b 2e4e      	MOV  R4,R30
                  ; 0000 0028      // Declare your local variables here
                  ; 0000 0029 
                  ; 0000 002A     // Crystal Oscillator division factor: 1
                  ; 0000 002B     #pragma optsize-
                  ; 0000 002C     CLKPR=(1<<CLKPCE);
-000047 e8e0      	LDI  R30,LOW(128)
-000048 bde6      	OUT  0x26,R30
+00004c e8e0      	LDI  R30,LOW(128)
+00004d bde6      	OUT  0x26,R30
                  ; 0000 002D     CLKPR=(0<<CLKPCE) | (0<<CLKPS3) | (0<<CLKPS2) | (0<<CLKPS1) | (0<<CLKPS0);
-000049 e0e0      	LDI  R30,LOW(0)
-00004a bde6      	OUT  0x26,R30
+00004e e0e0      	LDI  R30,LOW(0)
+00004f bde6      	OUT  0x26,R30
                  ; 0000 002E     #ifdef _OPTIMIZE_SIZE_
                  ; 0000 002F     #pragma optsize+
                  ; 0000 0030     #endif
@@ -1210,12 +1219,12 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  ; 0000 0033     // Port B initialization
                  ; 0000 0034     // Function: Bit5=In Bit4=In Bit3=In Bit2=In Bit1=In Bit0=In
                  ; 0000 0035     DDRB=(0<<DDB5) | (0<<DDB4) | (0<<DDB3) | (0<<DDB2) | (0<<DDB1) | (1<<DDB0);
-00004b e0e1      	LDI  R30,LOW(1)
-00004c bbe7      	OUT  0x17,R30
+000050 e0e1      	LDI  R30,LOW(1)
+000051 bbe7      	OUT  0x17,R30
                  ; 0000 0036     // State: Bit5=T Bit4=T Bit3=T Bit2=T Bit1=T Bit0=T
                  ; 0000 0037     PORTB=(0<<PORTB5) | (1<<PORTB4) | (1<<PORTB3) | (0<<PORTB2) | (1<<PORTB1) | (0<<PORTB0);
-00004d e1ea      	LDI  R30,LOW(26)
-00004e bbe8      	OUT  0x18,R30
+000052 e1ea      	LDI  R30,LOW(26)
+000053 bbe8      	OUT  0x18,R30
                  ; 0000 0038 
                  ; 0000 0039     // Timer/Counter 0 initialization
                  ; 0000 003A     // Clock source: System Clock
@@ -1224,45 +1233,45 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  ; 0000 003D     // OC0A output: Disconnected
                  ; 0000 003E     // OC0B output: Disconnected
                  ; 0000 003F     TCCR0A=(0<<COM0A1) | (0<<COM0A0) | (0<<COM0B1) | (0<<COM0B0) | (0<<WGM01) | (0<<WGM00);
-00004f e0e0      	LDI  R30,LOW(0)
-000050 bdef      	OUT  0x2F,R30
+000054 e0e0      	LDI  R30,LOW(0)
+000055 bdef      	OUT  0x2F,R30
                  ; 0000 0040     TCCR0B=(0<<WGM02) | (0<<CS02) | (0<<CS01) | (0<<CS00);
-000051 bfe3      	OUT  0x33,R30
+000056 bfe3      	OUT  0x33,R30
                  ; 0000 0041     TCNT0=0x00;
-000052 bfe2      	OUT  0x32,R30
+000057 bfe2      	OUT  0x32,R30
                  ; 0000 0042     OCR0B=0x00;
-000053 bde9      	OUT  0x29,R30
+000058 bde9      	OUT  0x29,R30
                  ; 0000 0043 	if(brightness_level_percent == 0xFF)
-000054 efef      	LDI  R30,LOW(255)
-000055 15e4      	CP   R30,R4
-000056 f411      	BRNE _0x3
+000059 efef      	LDI  R30,LOW(255)
+00005a 15e4      	CP   R30,R4
+00005b f411      	BRNE _0x3
                  ; 0000 0044 	{
-                 ; 0000 0045 		brightness_level_percent = 50;
-000057 e3e2      	LDI  R30,LOW(50)
-000058 2e4e      	MOV  R4,R30
+                 ; 0000 0045 		 brightness_level_percent = 60;
+00005c e3ec      	LDI  R30,LOW(60)
+00005d 2e4e      	MOV  R4,R30
                  ; 0000 0046 	}
                  ; 0000 0047     OCR0A = (brightness_level_percent * 0xFF) / 100;
                  _0x3:
-000059 d08e      	RCALL SUBOPT_0x0
+00005e d08e      	RCALL SUBOPT_0x0
                  ; 0000 0048 
                  ; 0000 0049     // Timer/Counter 0 Interrupt(s) initialization
                  ; 0000 004A     TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (0<<TOIE0);
-00005a e0e0      	LDI  R30,LOW(0)
-00005b bfe9      	OUT  0x39,R30
+00005f e0e0      	LDI  R30,LOW(0)
+000060 bfe9      	OUT  0x39,R30
                  ; 0000 004B 
                  ; 0000 004C     // External Interrupt(s) initialization
                  ; 0000 004D     // INT0: On
                  ; 0000 004E     // INT0 Mode: Falling Edge
                  ; 0000 004F     // Interrupt on any change on pins PCINT0-5: Off
                  ; 0000 0050     GIMSK=(1<<INT0) | (0<<PCIE);
-00005c e4e0      	LDI  R30,LOW(64)
-00005d bfeb      	OUT  0x3B,R30
+000061 e4e0      	LDI  R30,LOW(64)
+000062 bfeb      	OUT  0x3B,R30
                  ; 0000 0051     MCUCR=(1<<ISC01) | (0<<ISC00);
-00005e e0e2      	LDI  R30,LOW(2)
-00005f bfe5      	OUT  0x35,R30
+000063 e0e2      	LDI  R30,LOW(2)
+000064 bfe5      	OUT  0x35,R30
                  ; 0000 0052     GIFR=(1<<INTF0) | (0<<PCIF);
-000060 e4e0      	LDI  R30,LOW(64)
-000061 bfea      	OUT  0x3A,R30
+000065 e4e0      	LDI  R30,LOW(64)
+000066 bfea      	OUT  0x3A,R30
                  ; 0000 0053 
                  ; 0000 0054     // Analog Comparator initialization
                  ; 0000 0055     // Analog Comparator: Off
@@ -1271,22 +1280,22 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  ; 0000 0058     // The Analog Comparator's negative input is
                  ; 0000 0059     // connected to the AIN1 pin
                  ; 0000 005A     ACSR=(1<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (0<<ACIE) | (0<<ACIS1) | (0<<ACIS0);
-000062 e8e0      	LDI  R30,LOW(128)
-000063 b9e8      	OUT  0x8,R30
+000067 e8e0      	LDI  R30,LOW(128)
+000068 b9e8      	OUT  0x8,R30
                  ; 0000 005B     ADCSRB=(0<<ACME);
-000064 e0e0      	LDI  R30,LOW(0)
-000065 b9e3      	OUT  0x3,R30
+000069 e0e0      	LDI  R30,LOW(0)
+00006a b9e3      	OUT  0x3,R30
                  ; 0000 005C     // Digital input buffer on AIN0: On
                  ; 0000 005D     // Digital input buffer on AIN1: On
                  ; 0000 005E     DIDR0=(0<<AIN0D) | (0<<AIN1D);
-000066 bbe4      	OUT  0x14,R30
+00006b bbe4      	OUT  0x14,R30
                  ; 0000 005F 
                  ; 0000 0060     // ADC initialization
                  ; 0000 0061     // ADC disabled
                  ; 0000 0062     ADCSRA=(0<<ADEN) | (0<<ADSC) | (0<<ADATE) | (0<<ADIF) | (0<<ADIE) | (0<<ADPS2) | (0<<ADPS1) | (0<<ADPS0);
-000067 b9e6      	OUT  0x6,R30
+00006c b9e6      	OUT  0x6,R30
                  ; 0000 0063 }
-000068 9508      	RET
+00006d 9508      	RET
                  ; .FEND
                  ;
                  ;void main()
@@ -1294,23 +1303,23 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  _main:
                  ; .FSTART _main
                  ; 0000 0067     #asm("cli")
-000069 94f8      	CLI
+00006e 94f8      	CLI
                  ; 0000 0068     initializationDefolt();
-00006a dfd8      	RCALL _initializationDefolt
+00006f dfd8      	RCALL _initializationDefolt
                  ; 0000 0069     #asm("sei")
-00006b 9478      	SEI
+000070 9478      	SEI
                  ; 0000 006A     PWM();
-00006c d043      	RCALL _PWM
+000071 d043      	RCALL _PWM
                  ; 0000 006B     while (1)
                  _0x4:
                  ; 0000 006C     {
                  ; 0000 006D         Brightnes_Poll();
-00006d d01a      	RCALL _Brightnes_Poll
+000072 d01a      	RCALL _Brightnes_Poll
                  ; 0000 006E     }
-00006e cffe      	RJMP _0x4
+000073 cffe      	RJMP _0x4
                  ; 0000 006F }
                  _0x7:
-00006f cfff      	RJMP _0x7
+000074 cfff      	RJMP _0x7
                  ; .FEND
                  ;
                  ;void EEPROM_write(unsigned int uiAddress, unsigned char ucData)
@@ -1318,29 +1327,29 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  _EEPROM_write:
                  ; .FSTART _EEPROM_write
                  ; 0000 0073 	while(EECR & (1<<EEPE));
-000070 d086      	RCALL __SAVELOCR3
-000071 2f0a      	MOV  R16,R26
+000075 d086      	RCALL __SAVELOCR3
+000076 2f0a      	MOV  R16,R26
                 +
-000072 811b     +LDD R17 , Y + 3
-000073 812c     +LDD R18 , Y + 3 + 1
+000077 811b     +LDD R17 , Y + 3
+000078 812c     +LDD R18 , Y + 3 + 1
                  	__GETWRS 17,18,3
                  ;	uiAddress -> R17,R18
                  ;	ucData -> R16
                  _0x8:
-000074 99e1      	SBIC 0x1C,1
-000075 cffe      	RJMP _0x8
+000079 99e1      	SBIC 0x1C,1
+00007a cffe      	RJMP _0x8
                  ; 0000 0074 	EEAR = uiAddress;
-000076 bb1e      	OUT  0x1E,R17
+00007b bb1e      	OUT  0x1E,R17
                  ; 0000 0075 	EEDR = ucData;
-000077 bb0d      	OUT  0x1D,R16
+00007c bb0d      	OUT  0x1D,R16
                  ; 0000 0076 	EECR |= (1<<EEMPE);
-000078 9ae2      	SBI  0x1C,2
+00007d 9ae2      	SBI  0x1C,2
                  ; 0000 0077 	EECR |= (1<<EEPE);
-000079 9ae1      	SBI  0x1C,1
+00007e 9ae1      	SBI  0x1C,1
                  ; 0000 0078 }
-00007a d080      	RCALL __LOADLOCR3
-00007b 9625      	ADIW R28,5
-00007c 9508      	RET
+00007f d080      	RCALL __LOADLOCR3
+000080 9625      	ADIW R28,5
+000081 9508      	RET
                  ; .FEND
                  ;
                  ;unsigned char EEPROM_read(unsigned int uiAddress)
@@ -1349,24 +1358,24 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  ; .FSTART _EEPROM_read
                  ; 0000 007C 
                  ; 0000 007D 	while(EECR & (1<<EEWE));
-00007d d07a      	RCALL __SAVELOCR2
+000082 d07a      	RCALL __SAVELOCR2
                 +
-00007e 2f0a     +MOV R16 , R26
-00007f 2f1b     +MOV R17 , R27
+000083 2f0a     +MOV R16 , R26
+000084 2f1b     +MOV R17 , R27
                  	__PUTW2R 16,17
                  ;	uiAddress -> R16,R17
                  _0xB:
-000080 99e1      	SBIC 0x1C,1
-000081 cffe      	RJMP _0xB
+000085 99e1      	SBIC 0x1C,1
+000086 cffe      	RJMP _0xB
                  ; 0000 007E 	EEAR = uiAddress;
-000082 bb0e      	OUT  0x1E,R16
+000087 bb0e      	OUT  0x1E,R16
                  ; 0000 007F 	EECR |= (1<<EERE);
-000083 9ae0      	SBI  0x1C,0
+000088 9ae0      	SBI  0x1C,0
                  ; 0000 0080 	return EEDR;
-000084 b3ed      	IN   R30,0x1D
-000085 9109      	LD   R16,Y+
-000086 9119      	LD   R17,Y+
-000087 9508      	RET
+000089 b3ed      	IN   R30,0x1D
+00008a 9109      	LD   R16,Y+
+00008b 9119      	LD   R17,Y+
+00008c 9508      	RET
                  ; 0000 0081 }
                  ; .FEND
                  ;
@@ -1375,89 +1384,89 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  _Brightnes_Poll:
                  ; .FSTART _Brightnes_Poll
                  ; 0000 0085 	if(control_buttons_update)
-000088 2066      	TST  R6
-000089 f129      	BREQ _0xE
+00008d 2066      	TST  R6
+00008e f129      	BREQ _0xE
                  ; 0000 0086 	{
                  ; 0000 0087 		switch(control_buttons_status)
-00008a 2de5      	MOV  R30,R5
-00008b e0f0      	LDI  R31,0
+00008f 2de5      	MOV  R30,R5
+000090 e0f0      	LDI  R31,0
                  ; 0000 0088 		{
                  ; 0000 0089 			case 1:
-00008c 30e1      	CPI  R30,LOW(0x1)
-00008d e0a0      	LDI  R26,HIGH(0x1)
-00008e 07fa      	CPC  R31,R26
-00008f f429      	BRNE _0x12
+000091 30e1      	CPI  R30,LOW(0x1)
+000092 e0a0      	LDI  R26,HIGH(0x1)
+000093 07fa      	CPC  R31,R26
+000094 f429      	BRNE _0x12
                  ; 0000 008A 			{
                  ; 0000 008B 				if(brightness_level_percent > 20)
-000090 e1e4      	LDI  R30,LOW(20)
-000091 15e4      	CP   R30,R4
-000092 f408      	BRSH _0x13
+000095 e1e4      	LDI  R30,LOW(20)
+000096 15e4      	CP   R30,R4
+000097 f408      	BRSH _0x13
                  ; 0000 008C 				{
                  ; 0000 008D 					brightness_level_percent -= 20;
-000093 1a4e      	SUB  R4,R30
+000098 1a4e      	SUB  R4,R30
                  ; 0000 008E 				}
                  ; 0000 008F 				break;
                  _0x13:
-000094 c017      	RJMP _0x11
+000099 c017      	RJMP _0x11
                  ; 0000 0090 			}
                  ; 0000 0091 			case 2:
                  _0x12:
-000095 30e2      	CPI  R30,LOW(0x2)
-000096 e0a0      	LDI  R26,HIGH(0x2)
-000097 07fa      	CPC  R31,R26
-000098 f431      	BRNE _0x14
+00009a 30e2      	CPI  R30,LOW(0x2)
+00009b e0a0      	LDI  R26,HIGH(0x2)
+00009c 07fa      	CPC  R31,R26
+00009d f431      	BRNE _0x14
                  ; 0000 0092 			{
                  ; 0000 0093 				if(brightness_level_percent < 100)
-000099 e6e4      	LDI  R30,LOW(100)
-00009a 164e      	CP   R4,R30
-00009b f410      	BRSH _0x15
+00009e e6e4      	LDI  R30,LOW(100)
+00009f 164e      	CP   R4,R30
+0000a0 f410      	BRSH _0x15
                  ; 0000 0094 				{
                  ; 0000 0095 					brightness_level_percent += 20;
-00009c e1e4      	LDI  R30,LOW(20)
-00009d 0e4e      	ADD  R4,R30
+0000a1 e1e4      	LDI  R30,LOW(20)
+0000a2 0e4e      	ADD  R4,R30
                  ; 0000 0096 				}
                  ; 0000 0097 				break;
                  _0x15:
-00009e c00d      	RJMP _0x11
+0000a3 c00d      	RJMP _0x11
                  ; 0000 0098 			}
                  ; 0000 0099 			case 3:
                  _0x14:
-00009f 30e3      	CPI  R30,LOW(0x3)
-0000a0 e0a0      	LDI  R26,HIGH(0x3)
-0000a1 07fa      	CPC  R31,R26
-0000a2 f439      	BRNE _0x17
+0000a4 30e3      	CPI  R30,LOW(0x3)
+0000a5 e0a0      	LDI  R26,HIGH(0x3)
+0000a6 07fa      	CPC  R31,R26
+0000a7 f439      	BRNE _0x17
                  ; 0000 009A 			{
                  ; 0000 009B 				EEPROM_write(0x00, brightness_level_percent);
-0000a3 e0e0      	LDI  R30,LOW(0)
-0000a4 e0f0      	LDI  R31,HIGH(0)
-0000a5 93fa      	ST   -Y,R31
-0000a6 93ea      	ST   -Y,R30
-0000a7 2da4      	MOV  R26,R4
-0000a8 dfc7      	RCALL _EEPROM_write
+0000a8 e0e0      	LDI  R30,LOW(0)
+0000a9 e0f0      	LDI  R31,HIGH(0)
+0000aa 93fa      	ST   -Y,R31
+0000ab 93ea      	ST   -Y,R30
+0000ac 2da4      	MOV  R26,R4
+0000ad dfc7      	RCALL _EEPROM_write
                  ; 0000 009C 				break;
-0000a9 c002      	RJMP _0x11
+0000ae c002      	RJMP _0x11
                  ; 0000 009D 			}
                  ; 0000 009E 			default:
                  _0x17:
                  ; 0000 009F 			{
                  ; 0000 00A0 				control_buttons_status = 0;
-0000aa 2455      	CLR  R5
+0000af 2455      	CLR  R5
                  ; 0000 00A1 				return;
-0000ab 9508      	RET
+0000b0 9508      	RET
                  ; 0000 00A2 			}
                  ; 0000 00A3 		}
                  _0x11:
                  ; 0000 00A4 		control_buttons_update = 0;
-0000ac 2466      	CLR  R6
+0000b1 2466      	CLR  R6
                  ; 0000 00A5 		control_buttons_status = 0;
-0000ad 2455      	CLR  R5
+0000b2 2455      	CLR  R5
                  ; 0000 00A6 
                  ; 0000 00A7 		OCR0A = (brightness_level_percent * 0xFF) / 100;
-0000ae d039      	RCALL SUBOPT_0x0
+0000b3 d039      	RCALL SUBOPT_0x0
                  ; 0000 00A8 	}
                  ; 0000 00A9 }
                  _0xE:
-0000af 9508      	RET
+0000b4 9508      	RET
                  ; .FEND
                  ;
                  ;void PWM(void)
@@ -1465,15 +1474,15 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  _PWM:
                  ; .FSTART _PWM
                  ; 0000 00AD     TCCR0A = WGM | COM_A | COM_B;
-0000b0 eae3      	LDI  R30,LOW(163)
-0000b1 bdef      	OUT  0x2F,R30
+0000b5 eae3      	LDI  R30,LOW(163)
+0000b6 bdef      	OUT  0x2F,R30
                  ; 0000 00AE     TCCR0B = CS;
-0000b2 e0e3      	LDI  R30,LOW(3)
-0000b3 bfe3      	OUT  0x33,R30
+0000b7 e0e3      	LDI  R30,LOW(3)
+0000b8 bfe3      	OUT  0x33,R30
                  ; 0000 00AF     //OCR0A = 0x10;
                  ; 0000 00B0 	//OCR0B = 0x0A;
                  ; 0000 00B1     return;
-0000b4 9508      	RET
+0000b9 9508      	RET
                  ; 0000 00B2 }
                  ; .FEND
                  ;
@@ -1482,50 +1491,50 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  _Check_Button:
                  ; .FSTART _Check_Button
                  ; 0000 00B6     if(((~PINB) & PB3) && ((~PINB) & PB4))
-0000b5 d03e      	RCALL SUBOPT_0x1
-0000b6 70e8      	ANDI R30,LOW(0x8)
-0000b7 f019      	BREQ _0x19
-0000b8 d03b      	RCALL SUBOPT_0x1
-0000b9 71e0      	ANDI R30,LOW(0x10)
-0000ba f409      	BRNE _0x1A
+0000ba d03e      	RCALL SUBOPT_0x1
+0000bb 70e8      	ANDI R30,LOW(0x8)
+0000bc f019      	BREQ _0x19
+0000bd d03b      	RCALL SUBOPT_0x1
+0000be 71e0      	ANDI R30,LOW(0x10)
+0000bf f409      	BRNE _0x1A
                  _0x19:
-0000bb c002      	RJMP _0x18
+0000c0 c002      	RJMP _0x18
                  _0x1A:
                  ; 0000 00B7     {
                  ; 0000 00B8         return 3;
-0000bc e0e3      	LDI  R30,LOW(3)
-0000bd 9508      	RET
+0000c1 e0e3      	LDI  R30,LOW(3)
+0000c2 9508      	RET
                  ; 0000 00B9     }
                  ; 0000 00BA     else
                  _0x18:
                  ; 0000 00BB     {
                  ; 0000 00BC         if((~PINB) & PB3)
-0000be d035      	RCALL SUBOPT_0x1
-0000bf 70e8      	ANDI R30,LOW(0x8)
-0000c0 f011      	BREQ _0x1C
+0000c3 d035      	RCALL SUBOPT_0x1
+0000c4 70e8      	ANDI R30,LOW(0x8)
+0000c5 f011      	BREQ _0x1C
                  ; 0000 00BD         {
                  ; 0000 00BE             return 1;
-0000c1 e0e1      	LDI  R30,LOW(1)
-0000c2 9508      	RET
+0000c6 e0e1      	LDI  R30,LOW(1)
+0000c7 9508      	RET
                  ; 0000 00BF         }
                  ; 0000 00C0         else
                  _0x1C:
                  ; 0000 00C1         {
                  ; 0000 00C2             if((~PINB) & PB4)
-0000c3 d030      	RCALL SUBOPT_0x1
-0000c4 71e0      	ANDI R30,LOW(0x10)
-0000c5 f011      	BREQ _0x1E
+0000c8 d030      	RCALL SUBOPT_0x1
+0000c9 71e0      	ANDI R30,LOW(0x10)
+0000ca f011      	BREQ _0x1E
                  ; 0000 00C3             {
                  ; 0000 00C4                 return 2;
-0000c6 e0e2      	LDI  R30,LOW(2)
-0000c7 9508      	RET
+0000cb e0e2      	LDI  R30,LOW(2)
+0000cc 9508      	RET
                  ; 0000 00C5             }
                  ; 0000 00C6         }
                  _0x1E:
                  ; 0000 00C7     }
                  ; 0000 00C8     return 0;
-0000c8 e0e0      	LDI  R30,LOW(0)
-0000c9 9508      	RET
+0000cd e0e0      	LDI  R30,LOW(0)
+0000ce 9508      	RET
                  ; 0000 00C9 }
                  ; .FEND
                  ;
@@ -1533,166 +1542,166 @@ F:\GitHub\PWM_flashlight\PWM_flashlight\Debug\List\PWM_flashlight.asm(1042): war
                  ; 0000 00CC {
                  _exterInt0:
                  ; .FSTART _exterInt0
-0000ca 920a      	ST   -Y,R0
-0000cb 921a      	ST   -Y,R1
-0000cc 92fa      	ST   -Y,R15
-0000cd 936a      	ST   -Y,R22
-0000ce 937a      	ST   -Y,R23
-0000cf 938a      	ST   -Y,R24
-0000d0 939a      	ST   -Y,R25
-0000d1 93aa      	ST   -Y,R26
-0000d2 93ba      	ST   -Y,R27
-0000d3 93ea      	ST   -Y,R30
-0000d4 93fa      	ST   -Y,R31
-0000d5 b7ef      	IN   R30,SREG
-0000d6 93ea      	ST   -Y,R30
+0000cf 920a      	ST   -Y,R0
+0000d0 921a      	ST   -Y,R1
+0000d1 92fa      	ST   -Y,R15
+0000d2 936a      	ST   -Y,R22
+0000d3 937a      	ST   -Y,R23
+0000d4 938a      	ST   -Y,R24
+0000d5 939a      	ST   -Y,R25
+0000d6 93aa      	ST   -Y,R26
+0000d7 93ba      	ST   -Y,R27
+0000d8 93ea      	ST   -Y,R30
+0000d9 93fa      	ST   -Y,R31
+0000da b7ef      	IN   R30,SREG
+0000db 93ea      	ST   -Y,R30
                  ; 0000 00CD 	control_buttons_status = Check_Button();
-0000d7 dfdd      	RCALL _Check_Button
-0000d8 2e5e      	MOV  R5,R30
+0000dc dfdd      	RCALL _Check_Button
+0000dd 2e5e      	MOV  R5,R30
                  ; 0000 00CE 
                  ; 0000 00CF 	control_buttons_update++;
-0000d9 9463      	INC  R6
+0000de 9463      	INC  R6
                  ; 0000 00D0 }
-0000da 91e9      	LD   R30,Y+
-0000db bfef      	OUT  SREG,R30
-0000dc 91f9      	LD   R31,Y+
-0000dd 91e9      	LD   R30,Y+
-0000de 91b9      	LD   R27,Y+
-0000df 91a9      	LD   R26,Y+
-0000e0 9199      	LD   R25,Y+
-0000e1 9189      	LD   R24,Y+
-0000e2 9179      	LD   R23,Y+
-0000e3 9169      	LD   R22,Y+
-0000e4 90f9      	LD   R15,Y+
-0000e5 9019      	LD   R1,Y+
-0000e6 9009      	LD   R0,Y+
-0000e7 9518      	RETI
+0000df 91e9      	LD   R30,Y+
+0000e0 bfef      	OUT  SREG,R30
+0000e1 91f9      	LD   R31,Y+
+0000e2 91e9      	LD   R30,Y+
+0000e3 91b9      	LD   R27,Y+
+0000e4 91a9      	LD   R26,Y+
+0000e5 9199      	LD   R25,Y+
+0000e6 9189      	LD   R24,Y+
+0000e7 9179      	LD   R23,Y+
+0000e8 9169      	LD   R22,Y+
+0000e9 90f9      	LD   R15,Y+
+0000ea 9019      	LD   R1,Y+
+0000eb 9009      	LD   R0,Y+
+0000ec 9518      	RETI
                  ; .FEND
                  ;
                  
                  	.CSEG
                  ;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:8 WORDS
                  SUBOPT_0x0:
-0000e8 2da4      	MOV  R26,R4
-0000e9 e0b0      	LDI  R27,0
-0000ea efef      	LDI  R30,LOW(255)
-0000eb e0f0      	LDI  R31,HIGH(255)
-0000ec d024      	RCALL __MULW12
-0000ed 2fae      	MOV  R26,R30
-0000ee 2fbf      	MOV  R27,R31
-0000ef e6e4      	LDI  R30,LOW(100)
-0000f0 e0f0      	LDI  R31,HIGH(100)
-0000f1 d039      	RCALL __DIVW21
-0000f2 bfe6      	OUT  0x36,R30
-0000f3 9508      	RET
+0000ed 2da4      	MOV  R26,R4
+0000ee e0b0      	LDI  R27,0
+0000ef efef      	LDI  R30,LOW(255)
+0000f0 e0f0      	LDI  R31,HIGH(255)
+0000f1 d024      	RCALL __MULW12
+0000f2 2fae      	MOV  R26,R30
+0000f3 2fbf      	MOV  R27,R31
+0000f4 e6e4      	LDI  R30,LOW(100)
+0000f5 e0f0      	LDI  R31,HIGH(100)
+0000f6 d039      	RCALL __DIVW21
+0000f7 bfe6      	OUT  0x36,R30
+0000f8 9508      	RET
                  
                  ;OPTIMIZER ADDED SUBROUTINE, CALLED 4 TIMES, CODE SIZE REDUCTION:1 WORDS
                  SUBOPT_0x1:
-0000f4 b3e6      	IN   R30,0x16
-0000f5 95e0      	COM  R30
-0000f6 9508      	RET
+0000f9 b3e6      	IN   R30,0x16
+0000fa 95e0      	COM  R30
+0000fb 9508      	RET
                  
                  ;RUNTIME LIBRARY
                  
                  	.CSEG
                  __SAVELOCR3:
-0000f7 932a      	ST   -Y,R18
+0000fc 932a      	ST   -Y,R18
                  __SAVELOCR2:
-0000f8 931a      	ST   -Y,R17
-0000f9 930a      	ST   -Y,R16
-0000fa 9508      	RET
+0000fd 931a      	ST   -Y,R17
+0000fe 930a      	ST   -Y,R16
+0000ff 9508      	RET
                  
                  __LOADLOCR3:
-0000fb 812a      	LDD  R18,Y+2
+000100 812a      	LDD  R18,Y+2
                  __LOADLOCR2:
-0000fc 8119      	LDD  R17,Y+1
-0000fd 8108      	LD   R16,Y
-0000fe 9508      	RET
+000101 8119      	LDD  R17,Y+1
+000102 8108      	LD   R16,Y
+000103 9508      	RET
                  
                  __ANEGW1:
-0000ff 95f1      	NEG  R31
-000100 95e1      	NEG  R30
-000101 40f0      	SBCI R31,0
-000102 9508      	RET
+000104 95f1      	NEG  R31
+000105 95e1      	NEG  R30
+000106 40f0      	SBCI R31,0
+000107 9508      	RET
                  
                  __MULW12U:
-000103 e181      	LDI  R24,17
-000104 2400      	CLR  R0
-000105 1811      	SUB  R1,R1
-000106 c005      	RJMP __MULW12U1
+000108 e181      	LDI  R24,17
+000109 2400      	CLR  R0
+00010a 1811      	SUB  R1,R1
+00010b c005      	RJMP __MULW12U1
                  __MULW12U3:
-000107 f410      	BRCC __MULW12U2
-000108 0e0a      	ADD  R0,R26
-000109 1e1b      	ADC  R1,R27
+00010c f410      	BRCC __MULW12U2
+00010d 0e0a      	ADD  R0,R26
+00010e 1e1b      	ADC  R1,R27
                  __MULW12U2:
-00010a 9416      	LSR  R1
-00010b 9407      	ROR  R0
+00010f 9416      	LSR  R1
+000110 9407      	ROR  R0
                  __MULW12U1:
-00010c 95f7      	ROR  R31
-00010d 95e7      	ROR  R30
-00010e 958a      	DEC  R24
-00010f f7b9      	BRNE __MULW12U3
-000110 9508      	RET
-                 
-                 __MULW12:
-000111 d01e      	RCALL __CHKSIGNW
-000112 dff0      	RCALL __MULW12U
-000113 f40e      	BRTC __MULW121
-000114 dfea      	RCALL __ANEGW1
-                 __MULW121:
+000111 95f7      	ROR  R31
+000112 95e7      	ROR  R30
+000113 958a      	DEC  R24
+000114 f7b9      	BRNE __MULW12U3
 000115 9508      	RET
                  
-                 __DIVW21U:
-000116 2400      	CLR  R0
-000117 2411      	CLR  R1
-000118 e190      	LDI  R25,16
-                 __DIVW21U1:
-000119 0faa      	LSL  R26
-00011a 1fbb      	ROL  R27
-00011b 1c00      	ROL  R0
-00011c 1c11      	ROL  R1
-00011d 1a0e      	SUB  R0,R30
-00011e 0a1f      	SBC  R1,R31
-00011f f418      	BRCC __DIVW21U2
-000120 0e0e      	ADD  R0,R30
-000121 1e1f      	ADC  R1,R31
-000122 c001      	RJMP __DIVW21U3
-                 __DIVW21U2:
-000123 60a1      	SBR  R26,1
-                 __DIVW21U3:
-000124 959a      	DEC  R25
-000125 f799      	BRNE __DIVW21U1
-000126 2fea      	MOV  R30,R26
-000127 2ffb      	MOV  R31,R27
-000128 2da0      	MOV  R26,R0
-000129 2db1      	MOV  R27,R1
-00012a 9508      	RET
+                 __MULW12:
+000116 d01e      	RCALL __CHKSIGNW
+000117 dff0      	RCALL __MULW12U
+000118 f40e      	BRTC __MULW121
+000119 dfea      	RCALL __ANEGW1
+                 __MULW121:
+00011a 9508      	RET
                  
-                 __DIVW21:
-00012b d004      	RCALL __CHKSIGNW
-00012c dfe9      	RCALL __DIVW21U
-00012d f40e      	BRTC __DIVW211
-00012e dfd0      	RCALL __ANEGW1
-                 __DIVW211:
+                 __DIVW21U:
+00011b 2400      	CLR  R0
+00011c 2411      	CLR  R1
+00011d e190      	LDI  R25,16
+                 __DIVW21U1:
+00011e 0faa      	LSL  R26
+00011f 1fbb      	ROL  R27
+000120 1c00      	ROL  R0
+000121 1c11      	ROL  R1
+000122 1a0e      	SUB  R0,R30
+000123 0a1f      	SBC  R1,R31
+000124 f418      	BRCC __DIVW21U2
+000125 0e0e      	ADD  R0,R30
+000126 1e1f      	ADC  R1,R31
+000127 c001      	RJMP __DIVW21U3
+                 __DIVW21U2:
+000128 60a1      	SBR  R26,1
+                 __DIVW21U3:
+000129 959a      	DEC  R25
+00012a f799      	BRNE __DIVW21U1
+00012b 2fea      	MOV  R30,R26
+00012c 2ffb      	MOV  R31,R27
+00012d 2da0      	MOV  R26,R0
+00012e 2db1      	MOV  R27,R1
 00012f 9508      	RET
                  
+                 __DIVW21:
+000130 d004      	RCALL __CHKSIGNW
+000131 dfe9      	RCALL __DIVW21U
+000132 f40e      	BRTC __DIVW211
+000133 dfd0      	RCALL __ANEGW1
+                 __DIVW211:
+000134 9508      	RET
+                 
                  __CHKSIGNW:
-000130 94e8      	CLT
-000131 fff7      	SBRS R31,7
-000132 c002      	RJMP __CHKSW1
-000133 dfcb      	RCALL __ANEGW1
-000134 9468      	SET
+000135 94e8      	CLT
+000136 fff7      	SBRS R31,7
+000137 c002      	RJMP __CHKSW1
+000138 dfcb      	RCALL __ANEGW1
+000139 9468      	SET
                  __CHKSW1:
-000135 ffb7      	SBRS R27,7
-000136 c006      	RJMP __CHKSW2
-000137 95b1      	NEG  R27
-000138 95a1      	NEG  R26
-000139 40b0      	SBCI R27,0
-00013a f800      	BLD  R0,0
-00013b 9403      	INC  R0
-00013c fa00      	BST  R0,0
+00013a ffb7      	SBRS R27,7
+00013b c006      	RJMP __CHKSW2
+00013c 95b1      	NEG  R27
+00013d 95a1      	NEG  R26
+00013e 40b0      	SBCI R27,0
+00013f f800      	BLD  R0,0
+000140 9403      	INC  R0
+000141 fa00      	BST  R0,0
                  __CHKSW2:
-00013d 9508      	RET
+000142 9508      	RET
                  
                  ;END OF CODE MARKER
                  __END_OF_CODE:
@@ -1746,8 +1755,8 @@ Instructions used: 48 out of 114 (42.1%)
 ATtiny13 memory use summary [bytes]:
 Segment   Begin    End      Code   Data   Used    Size   Use%
 ---------------------------------------------------------------
-[.cseg] 0x000000 0x00027c    624     12    636    1024  62.1%
-[.dseg] 0x000060 0x000070      0      0      0      64   0.0%
+[.cseg] 0x000000 0x000286    624     22    646    1024  63.1%
+[.dseg] 0x000060 0x000080      0      0      0      64   0.0%
 [.eseg] 0x000000 0x000000      0      0      0      64   0.0%
 
 Assembly complete, 0 errors, 4 warnings

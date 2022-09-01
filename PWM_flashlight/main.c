@@ -1,4 +1,4 @@
-#define F_CPU 4800000UL
+#define F_CPU 128000UL
 #include <tiny13.h>
 #include <io.h>
 #include <delay.h>
@@ -66,7 +66,7 @@ void initializationDefolt(void)
     OCR0B=0x00;
 	if(brightness_level_percent == 0xFF)
 	{
-		brightness_level_percent = 50;
+		 brightness_level_percent = 60;
 	}
     OCR0A = (brightness_level_percent * 0xFF) / 100;
 

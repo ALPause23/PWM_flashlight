@@ -6,14 +6,14 @@
 ;Build configuration    : Debug
 ;Chip type              : ATtiny13
 ;Program type           : Application
-;Clock frequency        : 0,064000 MHz
+;Clock frequency        : 0,128000 MHz
 ;Memory model           : Tiny
 ;Optimize for           : Size
 ;(s)printf features     : int, width
 ;(s)scanf features      : int, width
 ;External RAM size      : 0
-;Data Stack size        : 16 byte(s)
-;Heap size              : 0 byte(s)
+;Data Stack size        : 32 byte(s)
+;Heap size              : 8 byte(s)
 ;Promote 'char' to 'int': Yes
 ;'char' is unsigned     : Yes
 ;8 bit enums            : Yes
@@ -79,8 +79,8 @@
 
 	.EQU __SRAM_START=0x0060
 	.EQU __SRAM_END=0x009F
-	.EQU __DSTACK_SIZE=0x0010
-	.EQU __HEAP_SIZE=0x0000
+	.EQU __DSTACK_SIZE=0x0020
+	.EQU __HEAP_SIZE=0x0008
 	.EQU __CLEAR_SRAM_SIZE=__SRAM_END-__SRAM_START+1
 
 	.MACRO __CPD1N
@@ -1041,11 +1041,19 @@ __START_OF_CODE:
 __REG_VARS:
 	.DB  0x0,0x0,0x0
 
+;HEAP START MARKER INITIALIZATION
+__HEAP_START_MARKER:
+	.DW  0,0
+
 
 __GLOBAL_INI_TBL:
 	.DW  0x03
 	.DW  0x04
 	.DW  __REG_VARS*2
+
+	.DW  0x04
+	.DW  0x98
+	.DW  __HEAP_START_MARKER*2
 
 _0xFFFFFFFF:
 	.DW  0
@@ -1125,10 +1133,10 @@ __GLOBAL_INI_END:
 	.ORG 0x00
 
 	.DSEG
-	.ORG 0x70
+	.ORG 0x80
 
 	.CSEG
-;#define F_CPU 4800000UL
+;#define F_CPU 128000UL
 ;#include <tiny13.h>
 	#ifndef __SLEEP_DEFINED__
 	#define __SLEEP_DEFINED__
@@ -1228,8 +1236,8 @@ _initializationDefolt:
 	CP   R30,R4
 	BRNE _0x3
 ; 0000 0044 	{
-; 0000 0045 		brightness_level_percent = 50;
-	LDI  R30,LOW(50)
+; 0000 0045 		 brightness_level_percent = 60;
+	LDI  R30,LOW(60)
 	MOV  R4,R30
 ; 0000 0046 	}
 ; 0000 0047     OCR0A = (brightness_level_percent * 0xFF) / 100;

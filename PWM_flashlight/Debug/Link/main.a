@@ -1,4 +1,4 @@
-;#define F_CPU 4800000UL
+;#define F_CPU 128000UL
 ;#include <tiny13.h>
 ;PCODE: $00000000 VOL: 0
 	#ifndef __SLEEP_DEFINED__
@@ -111,7 +111,7 @@
 ;PCODE: $00000021 VOL: 0
 ;PCODE: $00000022 VOL: 0
 ; 0000 0044 	{
-; 0000 0045 		brightness_level_percent = 50;
+; 0000 0045 		 brightness_level_percent = 60;
 ;PCODE: $00000023 VOL: 0
 ;PCODE: $00000024 VOL: 0
 ; 0000 0046 	}
