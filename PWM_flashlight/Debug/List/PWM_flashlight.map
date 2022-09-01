@@ -1,0 +1,26 @@
+RAM Allocation [bytes]
+Variable                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+
+EEPROM Allocation [bytes]
+Variable                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+
+Register Allocation
+Variable                                                                          Register  Size
+------------------------------------------------------------------------------------------------
+brightness_level_percent                                                          R4           1
+control_buttons_status                                                            R5           1
+control_buttons_update                                                            R6           1
+
+FLASH Allocation [words]
+Function                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+initializationDefolt                                                              0x00043     38
+main                                                                              0x00069      7
+EEPROM_write                                                                      0x00070     13
+EEPROM_read                                                                       0x0007D     11
+Brightnes_Poll                                                                    0x00088     40
+PWM                                                                               0x000B0      5
+Check_Button                                                                      0x000B5     21
+exterInt0                                                                         0x000CA     30
