@@ -6,14 +6,14 @@
 ;Build configuration    : Debug
 ;Chip type              : ATtiny13
 ;Program type           : Application
-;Clock frequency        : 0,064000 MHz
+;Clock frequency        : 4,800000 MHz
 ;Memory model           : Tiny
 ;Optimize for           : Size
 ;(s)printf features     : int, width
 ;(s)scanf features      : int, width
 ;External RAM size      : 0
-;Data Stack size        : 16 byte(s)
-;Heap size              : 0 byte(s)
+;Data Stack size        : 18 byte(s)
+;Heap size              : 8 byte(s)
 ;Promote 'char' to 'int': Yes
 ;'char' is unsigned     : Yes
 ;8 bit enums            : Yes
@@ -79,8 +79,8 @@
 
 	.EQU __SRAM_START=0x0060
 	.EQU __SRAM_END=0x009F
-	.EQU __DSTACK_SIZE=0x0010
-	.EQU __HEAP_SIZE=0x0000
+	.EQU __DSTACK_SIZE=0x0012
+	.EQU __HEAP_SIZE=0x0008
 	.EQU __CLEAR_SRAM_SIZE=__SRAM_END-__SRAM_START+1
 
 	.MACRO __CPD1N
@@ -1018,6 +1018,11 @@ __DELAY_USW_LOOP:
 	.DEF _brightness_level_percent=R4
 	.DEF _control_buttons_status=R5
 	.DEF _control_buttons_update=R6
+	.DEF _signal_polarity=R7
+	.DEF _interrupt_flag_polarity=R8
+	.DEF _width_percent=R9
+	.DEF _PWM_status_SM=R10
+	.DEF _PWM_last_status_SM=R11
 
 	.CSEG
 	.ORG 0x00
@@ -1032,20 +1037,29 @@ __START_OF_CODE:
 	RJMP 0x00
 	RJMP 0x00
 	RJMP 0x00
-	RJMP 0x00
+	RJMP _PWM_tim0_CompA
 	RJMP 0x00
 	RJMP 0x00
 	RJMP 0x00
 
 ;GLOBAL REGISTER VARIABLES INITIALIZATION
 __REG_VARS:
-	.DB  0x0,0x0,0x0
+	.DB  0x0,0x0,0x0,0x0
+	.DB  0x0,0x3C,0x0,0x2
+
+;HEAP START MARKER INITIALIZATION
+__HEAP_START_MARKER:
+	.DW  0,0
 
 
 __GLOBAL_INI_TBL:
-	.DW  0x03
+	.DW  0x08
 	.DW  0x04
 	.DW  __REG_VARS*2
+
+	.DW  0x04
+	.DW  0x98
+	.DW  __HEAP_START_MARKER*2
 
 _0xFFFFFFFF:
 	.DW  0
@@ -1125,11 +1139,13 @@ __GLOBAL_INI_END:
 	.ORG 0x00
 
 	.DSEG
-	.ORG 0x70
+	.ORG 0x72
 
 	.CSEG
-;#define F_CPU 4800000UL
-;#include <tiny13.h>
+;//#define F_CPU 4800000UL
+;//#define __AVR_ATtiny13__
+;
+;#include <PWM.h>
 	#ifndef __SLEEP_DEFINED__
 	#define __SLEEP_DEFINED__
 	.EQU __se_bit=0x20
@@ -1138,384 +1154,319 @@ __GLOBAL_INI_END:
 	.EQU __sm_powerdown=0x10
 	.SET power_ctrl_reg=mcucr
 	#endif
-;#include <io.h>
-;#include <delay.h>
-;#include <stdbool.h>
-;#include <stdint.h>
+;#include <AVR_gpio.h>
 ;
-;
-;
-;#define PB0   (1<<0)
-;#define PB1   (1<<1)
-;#define PB3   (1<<3)
-;#define PB4   (1<<4)
-;#define PB5   (1<<5)
-;#define PB6   (1<<6)
-;#define PB7   (1<<7)
-;
-;
-;#define WGM     (0x03) << 0
-;#define COM_A   (0x02) << 6
-;#define COM_B   (0x02) << 4
-;#define CS      (0x03) << 0
 ;
 ;uint8_t brightness_level_percent = 0;
-;uint8_t control_buttons_status = 0; // 0 - no used; 1 - brightnes up; 2 - brightnes down; 3 - pressing two buttons
+;uint8_t control_buttons_status = 0; /* 0 - no used; 1 - brightnes up; 2 - brightnes down; 3 - pressing two buttons */
 ;uint8_t control_buttons_update = 0;
 ;
 ;
 ;void initializationDefolt(void);
-;void PWM(void);
-;uint8_t Check_Button(void);
-;void Brightnes_Poll(void);
-;
 ;void EEPROM_write(unsigned int uiAddress, unsigned char ucData);
 ;unsigned char EEPROM_read(unsigned int uiAddress);
+;void Brightnes_Poll(void);
+;uint8_t Check_Button(void);
 ;
 ;void initializationDefolt(void)
-; 0000 0026 {
+; 0000 0014 {
 
 	.CSEG
 _initializationDefolt:
 ; .FSTART _initializationDefolt
-; 0000 0027 	brightness_level_percent = EEPROM_read(0x00);
+; 0000 0015 	brightness_level_percent = EEPROM_read(0x00);
 	LDI  R26,LOW(0)
 	LDI  R27,0
 	RCALL _EEPROM_read
 	MOV  R4,R30
-; 0000 0028      // Declare your local variables here
-; 0000 0029 
-; 0000 002A     // Crystal Oscillator division factor: 1
-; 0000 002B     #pragma optsize-
-; 0000 002C     CLKPR=(1<<CLKPCE);
+; 0000 0016      // Declare your local variables here
+; 0000 0017 
+; 0000 0018     // Crystal Oscillator division factor: 1
+; 0000 0019     #pragma optsize-
+; 0000 001A     CLKPR=(1<<CLKPCE);
 	LDI  R30,LOW(128)
 	OUT  0x26,R30
-; 0000 002D     CLKPR=(0<<CLKPCE) | (0<<CLKPS3) | (0<<CLKPS2) | (0<<CLKPS1) | (0<<CLKPS0);
+; 0000 001B     CLKPR=(0<<CLKPCE) | (0<<CLKPS3) | (0<<CLKPS2) | (0<<CLKPS1) | (0<<CLKPS0);
 	LDI  R30,LOW(0)
 	OUT  0x26,R30
-; 0000 002E     #ifdef _OPTIMIZE_SIZE_
-; 0000 002F     #pragma optsize+
-; 0000 0030     #endif
-; 0000 0031 
-; 0000 0032     // Input/Output Ports initialization
-; 0000 0033     // Port B initialization
-; 0000 0034     // Function: Bit5=In Bit4=In Bit3=In Bit2=In Bit1=In Bit0=In
-; 0000 0035     DDRB=(0<<DDB5) | (0<<DDB4) | (0<<DDB3) | (0<<DDB2) | (0<<DDB1) | (1<<DDB0);
+; 0000 001C     #ifdef _OPTIMIZE_SIZE_
+; 0000 001D     #pragma optsize+
+; 0000 001E     #endif
+; 0000 001F 
+; 0000 0020     // Input/Output Ports initialization
+; 0000 0021     // Port B initialization
+; 0000 0022     // Function: Bit5=In Bit4=In Bit3=In Bit2=In Bit1=In Bit0=In
+; 0000 0023     DDRB=(0<<DDB5) | (0<<DDB4) | (0<<DDB3) | (0<<DDB2) | (0<<DDB1) | (1<<DDB0);
 	LDI  R30,LOW(1)
 	OUT  0x17,R30
-; 0000 0036     // State: Bit5=T Bit4=T Bit3=T Bit2=T Bit1=T Bit0=T
-; 0000 0037     PORTB=(0<<PORTB5) | (1<<PORTB4) | (1<<PORTB3) | (0<<PORTB2) | (1<<PORTB1) | (0<<PORTB0);
-	LDI  R30,LOW(26)
+; 0000 0024     // State: Bit5=T Bit4=T Bit3=T Bit2=T Bit1=T Bit0=T
+; 0000 0025     PORTB=(0<<PORTB5) | (1<<PORTB4) | (1<<PORTB3) | (0<<PORTB2) | (1<<PORTB1) | (1<<PORTB0);
+	LDI  R30,LOW(27)
 	OUT  0x18,R30
-; 0000 0038 
-; 0000 0039     // Timer/Counter 0 initialization
-; 0000 003A     // Clock source: System Clock
-; 0000 003B     // Clock value: Timer 0 Stopped
-; 0000 003C     // Mode: Normal top=0xFF
-; 0000 003D     // OC0A output: Disconnected
-; 0000 003E     // OC0B output: Disconnected
-; 0000 003F     TCCR0A=(0<<COM0A1) | (0<<COM0A0) | (0<<COM0B1) | (0<<COM0B0) | (0<<WGM01) | (0<<WGM00);
-	LDI  R30,LOW(0)
-	OUT  0x2F,R30
-; 0000 0040     TCCR0B=(0<<WGM02) | (0<<CS02) | (0<<CS01) | (0<<CS00);
-	OUT  0x33,R30
-; 0000 0041     TCNT0=0x00;
-	OUT  0x32,R30
-; 0000 0042     OCR0B=0x00;
-	OUT  0x29,R30
-; 0000 0043 	if(brightness_level_percent == 0xFF)
-	LDI  R30,LOW(255)
-	CP   R30,R4
-	BRNE _0x3
-; 0000 0044 	{
-; 0000 0045 		brightness_level_percent = 50;
-	LDI  R30,LOW(50)
-	MOV  R4,R30
-; 0000 0046 	}
-; 0000 0047     OCR0A = (brightness_level_percent * 0xFF) / 100;
-_0x3:
-	RCALL SUBOPT_0x0
-; 0000 0048 
-; 0000 0049     // Timer/Counter 0 Interrupt(s) initialization
-; 0000 004A     TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (0<<TOIE0);
-	LDI  R30,LOW(0)
-	OUT  0x39,R30
-; 0000 004B 
-; 0000 004C     // External Interrupt(s) initialization
-; 0000 004D     // INT0: On
-; 0000 004E     // INT0 Mode: Falling Edge
-; 0000 004F     // Interrupt on any change on pins PCINT0-5: Off
-; 0000 0050     GIMSK=(1<<INT0) | (0<<PCIE);
+; 0000 0026 
+; 0000 0027     // External Interrupt(s) initialization
+; 0000 0028     // INT0: On
+; 0000 0029     // INT0 Mode: Falling Edge
+; 0000 002A     // Interrupt on any change on pins PCINT0-5: Off
+; 0000 002B     GIMSK=(1<<INT0) | (0<<PCIE);
 	LDI  R30,LOW(64)
 	OUT  0x3B,R30
-; 0000 0051     MCUCR=(1<<ISC01) | (0<<ISC00);
+; 0000 002C     MCUCR=(1<<ISC01) | (0<<ISC00);
 	LDI  R30,LOW(2)
 	OUT  0x35,R30
-; 0000 0052     GIFR=(1<<INTF0) | (0<<PCIF);
+; 0000 002D     GIFR=(1<<INTF0) | (0<<PCIF);
 	LDI  R30,LOW(64)
 	OUT  0x3A,R30
-; 0000 0053 
-; 0000 0054     // Analog Comparator initialization
-; 0000 0055     // Analog Comparator: Off
-; 0000 0056     // The Analog Comparator's positive input is
-; 0000 0057     // connected to the AIN0 pin
-; 0000 0058     // The Analog Comparator's negative input is
-; 0000 0059     // connected to the AIN1 pin
-; 0000 005A     ACSR=(1<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (0<<ACIE) | (0<<ACIS1) | (0<<ACIS0);
+; 0000 002E 
+; 0000 002F     // Analog Comparator initialization
+; 0000 0030     // Analog Comparator: Off
+; 0000 0031     // The Analog Comparator's positive input is
+; 0000 0032     // connected to the AIN0 pin
+; 0000 0033     // The Analog Comparator's negative input is
+; 0000 0034     // connected to the AIN1 pin
+; 0000 0035     ACSR=(1<<ACD) | (0<<ACBG) | (0<<ACO) | (0<<ACI) | (0<<ACIE) | (0<<ACIS1) | (0<<ACIS0);
 	LDI  R30,LOW(128)
 	OUT  0x8,R30
-; 0000 005B     ADCSRB=(0<<ACME);
+; 0000 0036     ADCSRB=(0<<ACME);
 	LDI  R30,LOW(0)
 	OUT  0x3,R30
-; 0000 005C     // Digital input buffer on AIN0: On
-; 0000 005D     // Digital input buffer on AIN1: On
-; 0000 005E     DIDR0=(0<<AIN0D) | (0<<AIN1D);
+; 0000 0037     // Digital input buffer on AIN0: On
+; 0000 0038     // Digital input buffer on AIN1: On
+; 0000 0039     DIDR0=(0<<AIN0D) | (0<<AIN1D);
 	OUT  0x14,R30
-; 0000 005F 
-; 0000 0060     // ADC initialization
-; 0000 0061     // ADC disabled
-; 0000 0062     ADCSRA=(0<<ADEN) | (0<<ADSC) | (0<<ADATE) | (0<<ADIF) | (0<<ADIE) | (0<<ADPS2) | (0<<ADPS1) | (0<<ADPS0);
+; 0000 003A 
+; 0000 003B     // ADC initialization
+; 0000 003C     // ADC disabled
+; 0000 003D     ADCSRA=(0<<ADEN) | (0<<ADSC) | (0<<ADATE) | (0<<ADIF) | (0<<ADIE) | (0<<ADPS2) | (0<<ADPS1) | (0<<ADPS0);
 	OUT  0x6,R30
-; 0000 0063 }
+; 0000 003E }
 	RET
 ; .FEND
 ;
 ;void main()
-; 0000 0066 {
+; 0000 0041 {
 _main:
 ; .FSTART _main
-; 0000 0067     #asm("cli")
+; 0000 0042     #asm("cli")
 	CLI
-; 0000 0068     initializationDefolt();
+; 0000 0043     initializationDefolt();
 	RCALL _initializationDefolt
-; 0000 0069     #asm("sei")
+; 0000 0044 	PWM_Init();
+	RCALL _PWM_Init
+; 0000 0045     #asm("sei")
 	SEI
-; 0000 006A     PWM();
-	RCALL _PWM
-; 0000 006B     while (1)
-_0x4:
-; 0000 006C     {
-; 0000 006D         Brightnes_Poll();
+; 0000 0046 
+; 0000 0047     while (1)
+_0x3:
+; 0000 0048     {
+; 0000 0049 		Brightnes_Poll();
 	RCALL _Brightnes_Poll
-; 0000 006E     }
-	RJMP _0x4
-; 0000 006F }
-_0x7:
-	RJMP _0x7
+; 0000 004A 		PWM_StateMachine();
+	RCALL _PWM_StateMachine
+; 0000 004B     }
+	RJMP _0x3
+; 0000 004C }
+_0x6:
+	RJMP _0x6
 ; .FEND
 ;
 ;void EEPROM_write(unsigned int uiAddress, unsigned char ucData)
-; 0000 0072 {
+; 0000 004F {
 _EEPROM_write:
 ; .FSTART _EEPROM_write
-; 0000 0073 	while(EECR & (1<<EEPE));
+; 0000 0050 	while(EECR & (1<<EEPE));
 	RCALL __SAVELOCR3
 	MOV  R16,R26
 	__GETWRS 17,18,3
 ;	uiAddress -> R17,R18
 ;	ucData -> R16
-_0x8:
+_0x7:
 	SBIC 0x1C,1
-	RJMP _0x8
-; 0000 0074 	EEAR = uiAddress;
+	RJMP _0x7
+; 0000 0051 	EEAR = uiAddress;
 	OUT  0x1E,R17
-; 0000 0075 	EEDR = ucData;
+; 0000 0052 	EEDR = ucData;
 	OUT  0x1D,R16
-; 0000 0076 	EECR |= (1<<EEMPE);
+; 0000 0053 	EECR |= (1<<EEMPE);
 	SBI  0x1C,2
-; 0000 0077 	EECR |= (1<<EEPE);
+; 0000 0054 	EECR |= (1<<EEPE);
 	SBI  0x1C,1
-; 0000 0078 }
+; 0000 0055 }
 	RCALL __LOADLOCR3
 	ADIW R28,5
 	RET
 ; .FEND
 ;
 ;unsigned char EEPROM_read(unsigned int uiAddress)
-; 0000 007B {
+; 0000 0058 {
 _EEPROM_read:
 ; .FSTART _EEPROM_read
-; 0000 007C 
-; 0000 007D 	while(EECR & (1<<EEWE));
+; 0000 0059 	while(EECR & (1<<EEWE));
 	RCALL __SAVELOCR2
 	__PUTW2R 16,17
 ;	uiAddress -> R16,R17
-_0xB:
+_0xA:
 	SBIC 0x1C,1
-	RJMP _0xB
-; 0000 007E 	EEAR = uiAddress;
+	RJMP _0xA
+; 0000 005A 	EEAR = uiAddress;
 	OUT  0x1E,R16
-; 0000 007F 	EECR |= (1<<EERE);
+; 0000 005B 	EECR |= (1<<EERE);
 	SBI  0x1C,0
-; 0000 0080 	return EEDR;
+; 0000 005C 	return EEDR;
 	IN   R30,0x1D
 	LD   R16,Y+
 	LD   R17,Y+
 	RET
-; 0000 0081 }
+; 0000 005D }
 ; .FEND
 ;
+;
+;
 ;void Brightnes_Poll(void)
-; 0000 0084 {
+; 0000 0062 {
 _Brightnes_Poll:
 ; .FSTART _Brightnes_Poll
-; 0000 0085 	if(control_buttons_update)
+; 0000 0063 	if(control_buttons_update)
 	TST  R6
-	BREQ _0xE
-; 0000 0086 	{
-; 0000 0087 		switch(control_buttons_status)
+	BREQ _0xD
+; 0000 0064 	{
+; 0000 0065 		switch(control_buttons_status)
 	MOV  R30,R5
 	LDI  R31,0
-; 0000 0088 		{
-; 0000 0089 			case 1:
+; 0000 0066 		{
+; 0000 0067 			case 1:
 	CPI  R30,LOW(0x1)
 	LDI  R26,HIGH(0x1)
 	CPC  R31,R26
-	BRNE _0x12
-; 0000 008A 			{
-; 0000 008B 				if(brightness_level_percent > 20)
-	LDI  R30,LOW(20)
-	CP   R30,R4
-	BRSH _0x13
-; 0000 008C 				{
-; 0000 008D 					brightness_level_percent -= 20;
-	SUB  R4,R30
-; 0000 008E 				}
-; 0000 008F 				break;
-_0x13:
-	RJMP _0x11
-; 0000 0090 			}
-; 0000 0091 			case 2:
+	BRNE _0x11
+; 0000 0068 			{
+; 0000 0069 				if(PWM_Get_PulseWidth() > 20)
+	RCALL _PWM_Get_PulseWidth
+	CPI  R30,LOW(0x15)
+	BRLO _0x12
+; 0000 006A 				{
+; 0000 006B 					PWM_PulseWidth_Sub(20);
+	LDI  R26,LOW(20)
+	RCALL _PWM_PulseWidth_Sub
+; 0000 006C 				}
+; 0000 006D 				break;
 _0x12:
+	RJMP _0x10
+; 0000 006E 			}
+; 0000 006F 			case 2:
+_0x11:
 	CPI  R30,LOW(0x2)
 	LDI  R26,HIGH(0x2)
 	CPC  R31,R26
-	BRNE _0x14
-; 0000 0092 			{
-; 0000 0093 				if(brightness_level_percent < 100)
-	LDI  R30,LOW(100)
-	CP   R4,R30
-	BRSH _0x15
-; 0000 0094 				{
-; 0000 0095 					brightness_level_percent += 20;
-	LDI  R30,LOW(20)
-	ADD  R4,R30
-; 0000 0096 				}
-; 0000 0097 				break;
-_0x15:
-	RJMP _0x11
-; 0000 0098 			}
-; 0000 0099 			case 3:
+	BRNE _0x13
+; 0000 0070 			{
+; 0000 0071 				if(PWM_Get_PulseWidth() < 100)
+	RCALL _PWM_Get_PulseWidth
+	CPI  R30,LOW(0x64)
+	BRSH _0x14
+; 0000 0072 				{
+; 0000 0073 					PWM_PulseWidth_Add(20);
+	LDI  R26,LOW(20)
+	RCALL _PWM_PulseWidth_Add
+; 0000 0074 				}
+; 0000 0075 				break;
 _0x14:
+	RJMP _0x10
+; 0000 0076 			}
+; 0000 0077 			case 3:
+_0x13:
 	CPI  R30,LOW(0x3)
 	LDI  R26,HIGH(0x3)
 	CPC  R31,R26
-	BRNE _0x17
-; 0000 009A 			{
-; 0000 009B 				EEPROM_write(0x00, brightness_level_percent);
+	BRNE _0x16
+; 0000 0078 			{
+; 0000 0079 				EEPROM_write(0x00, PWM_Get_PulseWidth());
 	LDI  R30,LOW(0)
 	LDI  R31,HIGH(0)
 	ST   -Y,R31
 	ST   -Y,R30
-	MOV  R26,R4
+	RCALL _PWM_Get_PulseWidth
+	MOV  R26,R30
 	RCALL _EEPROM_write
-; 0000 009C 				break;
-	RJMP _0x11
-; 0000 009D 			}
-; 0000 009E 			default:
-_0x17:
-; 0000 009F 			{
-; 0000 00A0 				control_buttons_status = 0;
+; 0000 007A 				break;
+	RJMP _0x10
+; 0000 007B 			}
+; 0000 007C 			default:
+_0x16:
+; 0000 007D 			{
+; 0000 007E 				control_buttons_status = 0;
 	CLR  R5
-; 0000 00A1 				return;
+; 0000 007F 				return;
 	RET
-; 0000 00A2 			}
-; 0000 00A3 		}
-_0x11:
-; 0000 00A4 		control_buttons_update = 0;
+; 0000 0080 			}
+; 0000 0081 		}
+_0x10:
+; 0000 0082 		control_buttons_update = 0;
 	CLR  R6
-; 0000 00A5 		control_buttons_status = 0;
+; 0000 0083 		control_buttons_status = 0;
 	CLR  R5
-; 0000 00A6 
-; 0000 00A7 		OCR0A = (brightness_level_percent * 0xFF) / 100;
-	RCALL SUBOPT_0x0
-; 0000 00A8 	}
-; 0000 00A9 }
-_0xE:
+; 0000 0084 
+; 0000 0085 		//OCR0A = (brightness_level_percent * 0xFF) / 100;
+; 0000 0086 	}
+; 0000 0087 }
+_0xD:
 	RET
-; .FEND
-;
-;void PWM(void)
-; 0000 00AC {
-_PWM:
-; .FSTART _PWM
-; 0000 00AD     TCCR0A = WGM | COM_A | COM_B;
-	LDI  R30,LOW(163)
-	OUT  0x2F,R30
-; 0000 00AE     TCCR0B = CS;
-	LDI  R30,LOW(3)
-	OUT  0x33,R30
-; 0000 00AF     //OCR0A = 0x10;
-; 0000 00B0 	//OCR0B = 0x0A;
-; 0000 00B1     return;
-	RET
-; 0000 00B2 }
 ; .FEND
 ;
 ;uint8_t Check_Button(void)
-; 0000 00B5 {
+; 0000 008A {
 _Check_Button:
 ; .FSTART _Check_Button
-; 0000 00B6     if(((~PINB) & PB3) && ((~PINB) & PB4))
-	RCALL SUBOPT_0x1
+; 0000 008B     if(((~PINB) & GPIO_Pin_3) && ((~PINB) & GPIO_Pin_4))
+	RCALL SUBOPT_0x0
 	ANDI R30,LOW(0x8)
-	BREQ _0x19
-	RCALL SUBOPT_0x1
+	BREQ _0x18
+	RCALL SUBOPT_0x0
 	ANDI R30,LOW(0x10)
-	BRNE _0x1A
+	BRNE _0x19
+_0x18:
+	RJMP _0x17
 _0x19:
-	RJMP _0x18
-_0x1A:
-; 0000 00B7     {
-; 0000 00B8         return 3;
+; 0000 008C     {
+; 0000 008D         return 3;
 	LDI  R30,LOW(3)
 	RET
-; 0000 00B9     }
-; 0000 00BA     else
-_0x18:
-; 0000 00BB     {
-; 0000 00BC         if((~PINB) & PB3)
-	RCALL SUBOPT_0x1
+; 0000 008E     }
+; 0000 008F     else
+_0x17:
+; 0000 0090     {
+; 0000 0091         if((~PINB) & GPIO_Pin_3)
+	RCALL SUBOPT_0x0
 	ANDI R30,LOW(0x8)
-	BREQ _0x1C
-; 0000 00BD         {
-; 0000 00BE             return 1;
+	BREQ _0x1B
+; 0000 0092         {
+; 0000 0093             return 1;
 	LDI  R30,LOW(1)
 	RET
-; 0000 00BF         }
-; 0000 00C0         else
-_0x1C:
-; 0000 00C1         {
-; 0000 00C2             if((~PINB) & PB4)
-	RCALL SUBOPT_0x1
+; 0000 0094         }
+; 0000 0095         else
+_0x1B:
+; 0000 0096         {
+; 0000 0097             if((~PINB) & GPIO_Pin_4)
+	RCALL SUBOPT_0x0
 	ANDI R30,LOW(0x10)
-	BREQ _0x1E
-; 0000 00C3             {
-; 0000 00C4                 return 2;
+	BREQ _0x1D
+; 0000 0098             {
+; 0000 0099                 return 2;
 	LDI  R30,LOW(2)
 	RET
-; 0000 00C5             }
-; 0000 00C6         }
-_0x1E:
-; 0000 00C7     }
-; 0000 00C8     return 0;
+; 0000 009A             }
+; 0000 009B         }
+_0x1D:
+; 0000 009C     }
+; 0000 009D     return 0;
 	LDI  R30,LOW(0)
 	RET
-; 0000 00C9 }
+; 0000 009E }
 ; .FEND
 ;
 ;interrupt [EXT_INT0] void exterInt0(void)
-; 0000 00CC {
+; 0000 00A1 {
 _exterInt0:
 ; .FSTART _exterInt0
 	ST   -Y,R0
@@ -1531,13 +1482,14 @@ _exterInt0:
 	ST   -Y,R31
 	IN   R30,SREG
 	ST   -Y,R30
-; 0000 00CD 	control_buttons_status = Check_Button();
+; 0000 00A2 	control_buttons_status = Check_Button();
 	RCALL _Check_Button
 	MOV  R5,R30
-; 0000 00CE 
-; 0000 00CF 	control_buttons_update++;
-	INC  R6
-; 0000 00D0 }
+; 0000 00A3 
+; 0000 00A4 	control_buttons_update = 1;
+	LDI  R30,LOW(1)
+	MOV  R6,R30
+; 0000 00A5 }
 	LD   R30,Y+
 	OUT  SREG,R30
 	LD   R31,Y+
@@ -1554,14 +1506,231 @@ _exterInt0:
 	RETI
 ; .FEND
 ;
+;
+;
+;#include "PWM.h"
+	#ifndef __SLEEP_DEFINED__
+	#define __SLEEP_DEFINED__
+	.EQU __se_bit=0x20
+	.EQU __sm_mask=0x18
+	.EQU __sm_adc_noise_red=0x08
+	.EQU __sm_powerdown=0x10
+	.SET power_ctrl_reg=mcucr
+	#endif
+;#include "AVR_gpio.h"
+;
+;
+;typedef enum
+;{
+;	DUTY_NORMAL = 0,
+;	DUTY_100_PERCENT = 1,
+;	DUTY_0_PERCENT = 2
+;}PWM_STATE_MACHINE;
+;
+;
+;static uint8_t inited_flag = 0;
+;uint8_t signal_polarity = 0;
+;uint8_t interrupt_flag_polarity = 0;
+;uint8_t width_percent = 60;
+;PWM_STATE_MACHINE PWM_status_SM = DUTY_NORMAL;
+;PWM_STATE_MACHINE PWM_last_status_SM = DUTY_0_PERCENT;
+;
+;
+;void PWM_DeInit(void);
+;
+;void PWM_Init(void)
+; 0002 0018 {
 
 	.CSEG
-;OPTIMIZER ADDED SUBROUTINE, CALLED 2 TIMES, CODE SIZE REDUCTION:8 WORDS
-SUBOPT_0x0:
-	MOV  R26,R4
-	LDI  R27,0
+_PWM_Init:
+; .FSTART _PWM_Init
+; 0002 0019 	if(inited_flag)
+	LDS  R30,_inited_flag_G002
+	CPI  R30,0
+	BREQ _0x40003
+; 0002 001A 	{
+; 0002 001B 		return;
+	RET
+; 0002 001C 	}
+; 0002 001D 
+; 0002 001E 	// Timer/Counter 0 initialization
+; 0002 001F 	// Clock source: System Clock
+; 0002 0020 	// Clock value: Timer 0 Stopped
+; 0002 0021 	// Mode: Normal top=0xFF
+; 0002 0022 	// OC0A output: Disconnected
+; 0002 0023 	// OC0B output: Disconnected
+; 0002 0024 	TCCR0A=(0<<COM0A1) | (1<<COM0A0) | (0<<COM0B1) | (0<<COM0B0) | (1<<WGM01) | (0<<WGM00);
+_0x40003:
+	LDI  R30,LOW(66)
+	OUT  0x2F,R30
+; 0002 0025 	TCCR0B=(0<<WGM02) | (0<<CS02) | (1<<CS01) | (1<<CS00);
+	LDI  R30,LOW(3)
+	OUT  0x33,R30
+; 0002 0026 	TCNT0=0x00;
+	LDI  R30,LOW(0)
+	OUT  0x32,R30
+; 0002 0027 	OCR0B=0x00;
+	OUT  0x29,R30
+; 0002 0028 	if(width_percent == 0xFF)
 	LDI  R30,LOW(255)
-	LDI  R31,HIGH(255)
+	CP   R30,R9
+	BRNE _0x40004
+; 0002 0029 	{
+; 0002 002A 		width_percent = 60;
+	LDI  R30,LOW(60)
+	MOV  R9,R30
+; 0002 002B 	}
+; 0002 002C 	OCR0A = 74;
+_0x40004:
+	LDI  R30,LOW(74)
+	OUT  0x36,R30
+; 0002 002D 
+; 0002 002E 	if(PWM_last_status_SM == DUTY_0_PERCENT)
+	LDI  R30,LOW(2)
+	CP   R30,R11
+	BRNE _0x40005
+; 0002 002F 	{
+; 0002 0030 		signal_polarity = 0;
+	CLR  R7
+; 0002 0031 	}
+; 0002 0032 	else if(PWM_last_status_SM == DUTY_100_PERCENT)
+	RJMP _0x40006
+_0x40005:
+	LDI  R30,LOW(1)
+	CP   R30,R11
+	BRNE _0x40007
+; 0002 0033 	{
+; 0002 0034 		signal_polarity = 1;
+	MOV  R7,R30
+; 0002 0035 	}
+; 0002 0036 
+; 0002 0037 	// Timer/Counter 0 Interrupt(s) initialization
+; 0002 0038 	TIMSK0=(0<<OCIE0B) | (1<<OCIE0A) | (0<<TOIE0);
+_0x40007:
+_0x40006:
+	LDI  R30,LOW(4)
+	OUT  0x39,R30
+; 0002 0039 
+; 0002 003A 	inited_flag = 1;
+	LDI  R30,LOW(1)
+	STS  _inited_flag_G002,R30
+; 0002 003B }
+	RET
+; .FEND
+;
+;void PWM_DeInit(void)
+; 0002 003E {
+_PWM_DeInit:
+; .FSTART _PWM_DeInit
+; 0002 003F 	inited_flag = 0;
+	LDI  R30,LOW(0)
+	STS  _inited_flag_G002,R30
+; 0002 0040 
+; 0002 0041 	interrupt_flag_polarity = 0;
+	CLR  R8
+; 0002 0042 	signal_polarity = 0;
+	CLR  R7
+; 0002 0043 	TIMSK0 &= ~(1<<OCIE0A);
+	IN   R30,0x39
+	ANDI R30,0xFB
+	OUT  0x39,R30
+; 0002 0044 	TCCR0A &= ~(1<<WGM01);
+	IN   R30,0x2F
+	ANDI R30,0xFD
+	OUT  0x2F,R30
+; 0002 0045 	TCCR0A &= ~(1<<WGM00);
+	IN   R30,0x2F
+	ANDI R30,0xFE
+	OUT  0x2F,R30
+; 0002 0046 	TCCR0A &= ~(1<<COM0A1);
+	IN   R30,0x2F
+	ANDI R30,0x7F
+	OUT  0x2F,R30
+; 0002 0047 	TCCR0A &= ~(1<<COM0A0);
+	IN   R30,0x2F
+	ANDI R30,0xBF
+	OUT  0x2F,R30
+; 0002 0048 	TCNT0=0x00;
+	LDI  R30,LOW(0)
+	OUT  0x32,R30
+; 0002 0049 }
+	RET
+; .FEND
+;
+;void PWM_StateMachine(void)
+; 0002 004C {
+_PWM_StateMachine:
+; .FSTART _PWM_StateMachine
+; 0002 004D 	if(width_percent == 0)
+	TST  R9
+	BRNE _0x40008
+; 0002 004E 	{
+; 0002 004F 		PWM_status_SM = DUTY_0_PERCENT;
+	LDI  R30,LOW(2)
+	MOV  R10,R30
+; 0002 0050 	}
+; 0002 0051 	else
+	RJMP _0x40009
+_0x40008:
+; 0002 0052 	{
+; 0002 0053 		if(width_percent == 100)
+	LDI  R30,LOW(100)
+	CP   R30,R9
+	BRNE _0x4000A
+; 0002 0054 		{
+; 0002 0055 			PWM_status_SM = DUTY_100_PERCENT;
+	LDI  R30,LOW(1)
+	MOV  R10,R30
+; 0002 0056 		}
+; 0002 0057 		else
+	RJMP _0x4000B
+_0x4000A:
+; 0002 0058 		{
+; 0002 0059 			PWM_status_SM = DUTY_NORMAL;
+	CLR  R10
+; 0002 005A 		}
+_0x4000B:
+; 0002 005B 	}
+_0x40009:
+; 0002 005C 
+; 0002 005D 	switch(PWM_status_SM)
+	MOV  R30,R10
+	LDI  R31,0
+; 0002 005E 	{
+; 0002 005F 		case DUTY_NORMAL:
+	SBIW R30,0
+	BRNE _0x4000F
+; 0002 0060 		{
+; 0002 0061 			PWM_Init();
+	RCALL _PWM_Init
+; 0002 0062 
+; 0002 0063 			if(interrupt_flag_polarity)
+	TST  R8
+	BREQ _0x40010
+; 0002 0064 			{
+; 0002 0065 				if(signal_polarity == 1)
+	LDI  R30,LOW(1)
+	CP   R30,R7
+	BRNE _0x40011
+; 0002 0066 				{
+; 0002 0067 					OCR0A = (width_percent * 74) / 100;
+	MOV  R26,R9
+	LDI  R27,0
+	RJMP _0x40015
+; 0002 0068 				}
+; 0002 0069 				else
+_0x40011:
+; 0002 006A 				{
+; 0002 006B 					OCR0A = ((100 - width_percent) * 74) / 100;
+	MOV  R30,R9
+	LDI  R31,0
+	LDI  R26,LOW(100)
+	LDI  R27,HIGH(100)
+	SUB  R26,R30
+	SBC  R27,R31
+_0x40015:
+	LDI  R30,LOW(74)
+	LDI  R31,HIGH(74)
 	RCALL __MULW12
 	MOV  R26,R30
 	MOV  R27,R31
@@ -1569,10 +1738,121 @@ SUBOPT_0x0:
 	LDI  R31,HIGH(100)
 	RCALL __DIVW21
 	OUT  0x36,R30
+; 0002 006C 				}
+; 0002 006D 				interrupt_flag_polarity = 0;
+	CLR  R8
+; 0002 006E 			}
+; 0002 006F 
+; 0002 0070 			break;
+_0x40010:
+	RJMP _0x4000E
+; 0002 0071 		}
+; 0002 0072 		case DUTY_0_PERCENT:
+_0x4000F:
+	CPI  R30,LOW(0x2)
+	LDI  R26,HIGH(0x2)
+	CPC  R31,R26
+	BRNE _0x40013
+; 0002 0073 		{
+; 0002 0074 			PWM_DeInit();
+	RCALL _PWM_DeInit
+; 0002 0075 			PORTB &= ~GPIO_Pin_1;
+	CBI  0x18,1
+; 0002 0076 			break;
+	RJMP _0x4000E
+; 0002 0077 		}
+; 0002 0078 		case DUTY_100_PERCENT:
+_0x40013:
+	CPI  R30,LOW(0x1)
+	LDI  R26,HIGH(0x1)
+	CPC  R31,R26
+	BRNE _0x4000E
+; 0002 0079 		{
+; 0002 007A 			PWM_DeInit();
+	RCALL _PWM_DeInit
+; 0002 007B 			PORTB |= GPIO_Pin_1;
+	SBI  0x18,1
+; 0002 007C 			break;
+; 0002 007D 		}
+; 0002 007E 	}
+_0x4000E:
+; 0002 007F 
+; 0002 0080 }
 	RET
+; .FEND
+;
+;void PWM_PulseWidth_Add(uint8_t value)
+; 0002 0083 {
+_PWM_PulseWidth_Add:
+; .FSTART _PWM_PulseWidth_Add
+; 0002 0084 	width_percent += value;
+	ST   -Y,R16
+	MOV  R16,R26
+;	value -> R16
+	ADD  R9,R16
+; 0002 0085 }
+	RJMP _0x2000001
+; .FEND
+;
+;void PWM_PulseWidth_Sub(uint8_t value)
+; 0002 0088 {
+_PWM_PulseWidth_Sub:
+; .FSTART _PWM_PulseWidth_Sub
+; 0002 0089 	width_percent -= value;
+	ST   -Y,R16
+	MOV  R16,R26
+;	value -> R16
+	SUB  R9,R16
+; 0002 008A }
+_0x2000001:
+	LD   R16,Y+
+	RET
+; .FEND
+;
+;void PWM_WidthPercent_Set(uint8_t new_value)
+; 0002 008D {
+; 0002 008E 	width_percent = new_value;
+;	new_value -> R16
+; 0002 008F }
+;
+;uint8_t PWM_Get_PulseWidth(void)
+; 0002 0092 {
+_PWM_Get_PulseWidth:
+; .FSTART _PWM_Get_PulseWidth
+; 0002 0093 	return width_percent;
+	MOV  R30,R9
+	RET
+; 0002 0094 }
+; .FEND
+;
+;interrupt [TIM0_COMPA] void PWM_tim0_CompA(void)
+; 0002 0097 {
+_PWM_tim0_CompA:
+; .FSTART _PWM_tim0_CompA
+	ST   -Y,R30
+	IN   R30,SREG
+	ST   -Y,R30
+; 0002 0098 	signal_polarity ^= 0x01;
+	LDI  R30,LOW(1)
+	EOR  R7,R30
+; 0002 0099 
+; 0002 009A 	interrupt_flag_polarity = 1;
+	MOV  R8,R30
+; 0002 009B }
+	LD   R30,Y+
+	OUT  SREG,R30
+	LD   R30,Y+
+	RETI
+; .FEND
+;
 
+	.DSEG
+_inited_flag_G002:
+	.BYTE 0x1
+
+	.CSEG
 ;OPTIMIZER ADDED SUBROUTINE, CALLED 4 TIMES, CODE SIZE REDUCTION:1 WORDS
-SUBOPT_0x1:
+SUBOPT_0x0:
 	IN   R30,0x16
 	COM  R30
 	RET

@@ -1,0 +1,34 @@
+RAM Allocation [bytes]
+Variable                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+
+EEPROM Allocation [bytes]
+Variable                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+
+Register Allocation
+Variable                                                                          Register  Size
+------------------------------------------------------------------------------------------------
+brightness_level_percent                                                          R4           1
+control_buttons_status                                                            R5           1
+control_buttons_update                                                            R6           1
+signal_polarity                                                                   R7           1
+interrupt_flag_polarity                                                           R8           1
+width_percent                                                                     R9           1
+pwm_sm                                                                            R10          1
+inited_flag                                                                       R11          1
+
+FLASH Allocation [words]
+Function                                                                          Address   Size
+------------------------------------------------------------------------------------------------
+initializationDefolt                                                              0x0004A     25
+main                                                                              0x00063      8
+EEPROM_write                                                                      0x0006B     13
+Brightnes_Poll                                                                    0x00083     41
+exterInt0                                                                         0x000C1     31
+PWM_Init                                                                          0x000E0     23
+PWM_DeInit                                                                        0x000F7     21
+PWM_StateMachine                                                                  0x0010C     56
+PWM_PulseWidth_Add                                                                0x00144      4
+PWM_PulseWidth_Sub                                                                0x00148      5
+PWM_tim0_CompA                                                                    0x0014F     10
